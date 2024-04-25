@@ -2,8 +2,8 @@
 cluster based memory stacking data  for Attention based model Continual Learning
 
 
-<img src="https://github.com/jwr0218/attention_continual/assets/54136688/e615c923-2cf7-40d1-92c9-f092513fa6c4" width="200" height="200"/>
-<img src="https://github.com/jwr0218/attention_continual/assets/54136688/db7d036d-e1da-435e-9f0f-de364e208638" width="200" height="200"/>
+<img src="https://github.com/jwr0218/attention_continual/assets/54136688/e615c923-2cf7-40d1-92c9-f092513fa6c4" width="500"/>
+<img src="https://github.com/jwr0218/attention_continual/assets/54136688/db7d036d-e1da-435e-9f0f-de364e208638" width="500"/>
 
 ## Data Preparation
 
