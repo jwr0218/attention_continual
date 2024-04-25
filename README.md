@@ -50,10 +50,10 @@ All code was developed and tested on Nvidia RTX A4000 (48SMs, 16GB) the followin
 
 ## Implement
 
-'''
+```shell
 python AMI_continual_cluster.py (summer/winter/all)
 ex) python AMI_continual_cluster.py summer 
 
 python ETRI_continual_cluster.py 
 
-'''
+```
