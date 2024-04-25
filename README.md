@@ -1,5 +1,5 @@
-# attention_continual
-cluster based memory stacking data  for Attention based model Continual Learning
+# cluster based memory stacking data  for Attention based model Continual Learning
+
 
 
 <p align="center"><img src="https://github.com/jwr0218/attention_continual/assets/54136688/e615c923-2cf7-40d1-92c9-f092513fa6c4" width="750"/></p>
