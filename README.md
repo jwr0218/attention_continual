@@ -32,11 +32,11 @@ Datasets are used in the following file structure:
 ```
 
 
-### AMI Dataset**
+### AMI Dataset
 Time Series Regression (Elec, water, gas hotwater, hot) ( classified ) 
 
   
-### ETRI Human Life log Dataset**
+### ETRI Human Life log Dataset
 you can download it from [here](https://nanum.etri.re.kr/share/schung1/ETRILifelogDataset2020?lang=ko_KR)
 
 
