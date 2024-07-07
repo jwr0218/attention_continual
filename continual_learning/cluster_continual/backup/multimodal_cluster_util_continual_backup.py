@@ -124,111 +124,6 @@ class Multimodal_utils():
         return model , avg_loss
 
 
-    def Train_continual_GEM(self,model, optimizer, loss_fn, new_loaders,replay_loaders, vali_loader, early_stopping):
-        # print(replay_loaders)
-        # print(new_loaders)
-        
-    
-        for epoch in range(self.n_epochs):
-            model.train()
-            loss_preds = []
-            if len(replay_loaders)> 0 :
-                replay_iterators = [iter(loader) for loader in replay_loaders]
-                new_iterators = [iter(loader) for loader in new_loaders]
-                max_count_replay = max([len(loader) for loader in replay_loaders])
-                max_count_new = max([len(loader) for loader in new_loaders])
-                min_iter_num = min(max_count_replay, max_count_new)
-                
-                
-                optimizer.zero_grad()
-                # max_iter_num : iterator num
-                for _ in range(min_iter_num):
-                    past_gradients = []    
-                    
-                    for idx in range(len(replay_iterators)):
-                        model.zero_grad()    
-                        feature,label = next(replay_iterators[idx])
-                        feature , label = feature.to(device) , label.to(device)
-                        y_pred, att = model(feature)
-                        loss_pred = loss_fn(y_pred, label)
-                        loss_pred.backward()
-                    
-                        past_gradients.append(get_gradient(model))
-                    
-                    model.zero_grad()
-                    
-                    for idx in range(len(new_iterators)):
-                        feature,label = next(new_iterators[idx])
-                        feature , label = feature.to(device) , label.to(device)
-                        y_pred, att = model(feature)
-                        loss_pred = loss_fn(y_pred, label)
-                        loss_pred.backward()
-                    
-                    cur_gradient = get_gradient(model)
-                    past_gradients = torch.stack(past_gradients)
-                    
-                    
-                    dotp = torch.mm(cur_gradient.unsqueeze(0), past_gradients.T)
-                    # print(past_gradients.T.shape)
-                    # print('===-----'*30)
-                    # print(cur_gradient.shape)
-                    # print('===-----'*30)
-                    # print(dotp)
-                    if (dotp < 0).sum() != 0:
-                        # calculate new gradients
-                        new_grad = project_gradient_qp(cur_gradient, past_gradients.T)
-                        update_gradient(model, new_grad)
-                    
-
-            else:
-                for batch in zip(*new_loaders):
-                    # print([len(b[0]) for b in batch])
-                    features = torch.cat([b[0] for b in batch], dim=0)  # 모든 features 합치기
-                    labels = torch.cat([b[1] for b in batch], dim=0)  # 모든 labels 합치기
-                    loss_total = 0
-                    if features.shape[0] <= 1 :
-                        # print('사이즈가 작아 break 합니다. ')
-                        continue
-
-                    features, labels = features.to(device), labels.to(device)
-                    y_pred, att = model(features)
-                    optimizer.zero_grad()
-                    
-                    loss_pred = loss_fn(y_pred, labels)
-                    loss_preds.append(loss_pred.item())
-                    loss_pred.backward()
-                    optimizer.step()
-
-            
-
-            # # 에포크의 평균 손실 계산
-            # avg_loss = sum(loss_preds) / len(loss_preds)
-
-            # 검증 부분
-            # if vali_loader is not None:    
-            model.eval()
-            val_loss = 0
-            sha= 0 
-            with torch.no_grad():
-                for features, label in vali_loader:
-                    features, label = features.to(device), label.to(device)
-                    y_pred, _ = model(features)
-                    val_loss += loss_fn(y_pred, label).item()
-                    
-                    sha += features.shape[0]
-            val_loss /= sha
-
-            #val_loss /= len(vali_loader)
-
-            # 조기 종료 체크
-            if early_stopping(val_loss, model):
-                print(f'Early stopping at epoch {epoch}')
-                break
-            if epoch % 10 == 0 :
-                print(val_loss)
-                pass
-        return model , 0 
-
     def Train_continual_AGEM(self,model, optimizer, loss_fn, new_loaders,replay_loaders, vali_loader, early_stopping):
         for epoch in range(self.n_epochs):
             model.train()
@@ -390,30 +285,7 @@ class Multimodal_utils():
         # replay_feature_tmp = replay_feature[0]
         # replay_label_tmp = replay_label[0]
         
-        # print('Feature size : ',[len(f) for f in self.replay_feature])
-        new_clustered_indices = []
-        for i in range(self.n_cluster):
-            indices = np.where(new_clusters == i)[0]
-            np.random.shuffle(indices) # 섞여도 됨 .
-            new_clustered_indices.append(indices)
-        new_total_size = sum([len(f) for f in new_clustered_indices])
         
-        for idx in range(len(new_clustered_indices)):
-            cluster_indices = new_clustered_indices[idx]
-            features = new_memory_feature[cluster_indices]
-            labels = new_memory_label[cluster_indices]
-            # print('====='*20)
-            # print(len(features))
-            # print(len(labels))
-            # print(int(batch_size*(len(features)/total_size)))
-            new_dataset = TensorDataset(torch.tensor(features), torch.tensor(labels))
-            cluster_batch_size = self.batch_size*(len(features)/new_total_size)
-            if int(cluster_batch_size) == 0  :
-                if len(features) == 0 :
-                    continue
-                cluster_batch_size  = len(features)
-            new_dataloader = DataLoader(new_dataset, batch_size=int(cluster_batch_size), shuffle=True)
-            new_loaders.append(new_dataloader)
         
         
         if replay_clusters is not None:
@@ -444,8 +316,59 @@ class Multimodal_utils():
                 replay_loaders.append(replay_dataloader)
 
         
+            # print('Feature size : ',[len(f) for f in self.replay_feature])
+            new_clustered_indices = []
+            for i in range(self.n_cluster):
+                indices = np.where(new_clusters == i)[0]
+                np.random.shuffle(indices) # 섞여도 됨 .
+                new_clustered_indices.append(indices)
+            new_total_size = sum([len(f) for f in new_clustered_indices])
+            
+            
+            for idx in range(len(new_clustered_indices)):
+                cluster_indices = new_clustered_indices[idx]
+                features = new_memory_feature[cluster_indices]
+                labels = new_memory_label[cluster_indices]
+                # print('====='*20)
+                # print(len(features))
+                # print(len(labels))
+                # print(int(batch_size*(len(features)/total_size)))
+                new_dataset = TensorDataset(torch.tensor(features), torch.tensor(labels))
+                cluster_batch_size = self.batch_size*(len(features)/new_total_size)
+                if int(cluster_batch_size) == 0  :
+                    if len(features) == 0 :
+                        continue
+                    cluster_batch_size  = len(features)
+                new_dataloader = DataLoader(new_dataset, batch_size=int(cluster_batch_size), shuffle=True)
+                new_loaders.append(new_dataloader)
+
+        else:
+            # print('Feature size : ',[len(f) for f in self.replay_feature])
+            new_clustered_indices = []
+            tmp_feature = []
+            tmp_label = []
+            
+            for i in range(self.n_cluster):
+                indices = np.where(new_clusters == i)[0]
+                np.random.shuffle(indices) # 섞여도 됨 .
+                new_clustered_indices.append(indices)
+            new_total_size = sum([len(f) for f in new_clustered_indices])
+            
+            
+            for idx in range(len(new_clustered_indices)):
+                cluster_indices = new_clustered_indices[idx]
+                features = new_memory_feature[cluster_indices]
+                labels = new_memory_label[cluster_indices]
+                # print('====='*20)
+                # print(len(features))
+                # print(len(labels))
+                # print(int(batch_size*(len(features)/total_size)))
+                tmp_feature.extend(features)
+                tmp_label.extend(labels)
+            new_dataset = TensorDataset(torch.tensor(tmp_feature), torch.tensor(tmp_label))
+            new_dataloader = DataLoader(new_dataset, batch_size=self.batch_size, shuffle=True)
+            new_loaders.append(new_dataloader)
         
-    
         
         #================= Validation ===================
         K = self.memory_size // (self.task_num )
@@ -618,7 +541,7 @@ class Multimodal_utils():
 
 
 
-    def Start_meta_solution(self,model,loss_fn,optimizer,new_dataset,early_stopping):
+    def Start_meta_solution(self,model,loss_fn,optimizer,new_dataset,early_stopping,typ):
         
         
         
@@ -637,6 +560,7 @@ class Multimodal_utils():
         else:
             meta_loader_new =  DataLoader(new_dataset, batch_size=512, shuffle=False)
             new_feature_lst,new_label_lst,  new_att_lst   = self.meta_Train(model,optimizer,loss_fn,meta_loader_new)
+            
             clustering_model = EuclideanKMeans(n_clusters = self.n_cluster, max_iter = 1000)
 
             new_clusters = clustering_model.fit_predict(new_att_lst)
@@ -648,15 +572,18 @@ class Multimodal_utils():
         # Train, Replay, New 
         
         new_train_loader , replay_train_loader ,replay_vali_loader= self.cluster_based_replay_loader(new,replay)
-        
+        print('new\t',new_train_loader)
+        print('replay\t',replay_train_loader)
         # Train, Replay, New
         
         
-        
-
-        # model, loss = self.Train_continual_ER(model,optimizer,loss_fn,new_train_loader,replay_train_loader,replay_vali_loader,early_stopping)
-        model, loss = self.Train_continual_AGEM(model,optimizer,loss_fn,new_train_loader,replay_train_loader,replay_vali_loader,early_stopping)
-        
+        if typ =='ER':
+            model, loss = self.Train_continual_ER(model,optimizer,loss_fn,new_train_loader,replay_train_loader,replay_vali_loader,early_stopping)
+        elif typ == 'AGEM':
+            model, loss = self.Train_continual_AGEM(model,optimizer,loss_fn,new_train_loader,replay_train_loader,replay_vali_loader,early_stopping)
+        else:
+            print('????? wrong type! ')
+            exit()
         # Model Update 
         
         # Model Update 
