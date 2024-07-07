@@ -1,7 +1,9 @@
-# attention_continual
-Attention based Continual Learning
+# cluster based memory stacking data  for Attention based model Continual Learning
 
 
+
+<p align="center"><img src="https://github.com/jwr0218/attention_continual/assets/54136688/e615c923-2cf7-40d1-92c9-f092513fa6c4" width="750"/></p>
+<p align="center"><img src="https://github.com/jwr0218/attention_continual/assets/54136688/db7d036d-e1da-435e-9f0f-de364e208638" width="750"/></p>
 
 ## Data Preparation
 
@@ -30,10 +32,11 @@ Datasets are used in the following file structure:
 ```
 
 
-**AMI Dataset**
-Time Series Regression (Elec, water, gas hotwater, hot)
-- classified - 
-**ETRI Human Life log Dataset**
+### AMI Dataset
+Time Series Regression (Elec, water, gas hotwater, hot) ( classified ) 
+
+  
+### ETRI Human Life log Dataset
 you can download it from [here](https://nanum.etri.re.kr/share/schung1/ETRILifelogDataset2020?lang=ko_KR)
 
 
